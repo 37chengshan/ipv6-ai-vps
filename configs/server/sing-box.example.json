@@ -1,0 +1,226 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "inbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-direct",
+      "listen": "::",
+      "listen_port": 443,
+      "users": [
+        {
+          "name": "k",
+          "uuid": "YOUR_UUID",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "YOUR_SNI",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "YOUR_SNI",
+            "server_port": 443
+          },
+          "private_key": "YOUR_REALITY_PRIVATE_KEY",
+          "short_id": [
+            "YOUR_REALITY_SHORT_ID"
+          ]
+        }
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "vless-resi",
+      "listen": "::",
+      "listen_port": 8444,
+      "users": [
+        {
+          "name": "k",
+          "uuid": "YOUR_UUID",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "YOUR_SNI",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "YOUR_SNI",
+            "server_port": 443
+          },
+          "private_key": "YOUR_REALITY_PRIVATE_KEY",
+          "short_id": [
+            "YOUR_REALITY_SHORT_ID"
+          ]
+        }
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "hy2-direct",
+      "listen": "::",
+      "listen_port": 8443,
+      "users": [
+        {
+          "name": "k",
+          "password": "YOUR_HY2_PASSWORD"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate_path": "/etc/sing-box/cert.pem",
+        "key_path": "/etc/sing-box/key.pem"
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "vless-resi2",
+      "listen": "::",
+      "listen_port": 8445,
+      "users": [
+        {
+          "name": "k",
+          "uuid": "YOUR_UUID",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "YOUR_SNI",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "YOUR_SNI",
+            "server_port": 443
+          },
+          "private_key": "YOUR_REALITY_PRIVATE_KEY",
+          "short_id": [
+            "YOUR_REALITY_SHORT_ID"
+          ]
+        }
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "vless-resi3",
+      "listen": "::",
+      "listen_port": 8446,
+      "users": [
+        {
+          "name": "k",
+          "uuid": "YOUR_UUID",
+          "flow": "xtls-rprx-vision"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": "YOUR_SNI",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "YOUR_SNI",
+            "server_port": 443
+          },
+          "private_key": "YOUR_REALITY_PRIVATE_KEY",
+          "short_id": [
+            "YOUR_REALITY_SHORT_ID"
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "direct",
+      "tag": "resi6",
+      "inet6_bind_address": "RESIDENTIAL_IPV6"
+    },
+    {
+      "type": "direct",
+      "tag": "resi6b",
+      "inet6_bind_address": "RESIDENTIAL_IPV6"
+    },
+    {
+      "type": "direct",
+      "tag": "resi6c",
+      "inet6_bind_address": "RESIDENTIAL_IPV6"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "inbound": [
+          "vless-resi"
+        ],
+        "action": "resolve",
+        "strategy": "prefer_ipv6"
+      },
+      {
+        "inbound": [
+          "vless-resi"
+        ],
+        "ip_version": 4,
+        "action": "reject"
+      },
+      {
+        "inbound": [
+          "vless-resi"
+        ],
+        "outbound": "resi6"
+      },
+      {
+        "inbound": [
+          "vless-resi2"
+        ],
+        "action": "resolve",
+        "strategy": "prefer_ipv6"
+      },
+      {
+        "inbound": [
+          "vless-resi2"
+        ],
+        "ip_version": 4,
+        "action": "reject"
+      },
+      {
+        "inbound": [
+          "vless-resi2"
+        ],
+        "outbound": "resi6b"
+      },
+      {
+        "inbound": [
+          "vless-resi3"
+        ],
+        "action": "resolve",
+        "strategy": "prefer_ipv6"
+      },
+      {
+        "inbound": [
+          "vless-resi3"
+        ],
+        "ip_version": 4,
+        "action": "reject"
+      },
+      {
+        "inbound": [
+          "vless-resi3"
+        ],
+        "outbound": "resi6c"
+      }
+    ],
+    "final": "direct"
+  }
+}

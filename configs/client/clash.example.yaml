@@ -1,0 +1,196 @@
+mixed-port: 7890
+allow-lan: false
+mode: rule
+find-process-mode: strict
+log-level: info
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+external-controller: 127.0.0.1:9090
+tun:
+  enable: true
+  stack: mixed
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack:
+  - any:53
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+  - '*.lan'
+  - '*.local'
+  default-nameserver:
+  - 223.5.5.5
+  - 119.29.29.29
+  nameserver:
+  - https://1.1.1.1/dns-query#Proxy
+  - https://dns.google/dns-query#Proxy
+  nameserver-policy:
+    geosite:cn:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+    +.cn:
+    - https://doh.pub/dns-query
+    geosite:anthropic:
+    - https://1.1.1.1/dns-query#k-vps
+    +.claude.ai:
+    - https://1.1.1.1/dns-query#k-vps
+    +.claude.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.claudeusercontent.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.openai.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.chatgpt.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.oaistatic.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.oaiusercontent.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.google.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.googleapis.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.gstatic.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.googleusercontent.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.googletagmanager.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.google-analytics.com:
+    - https://1.1.1.1/dns-query#k-vps
+  proxy-server-nameserver:
+  - https://doh.pub/dns-query
+proxies:
+- name: k-vps
+  type: vless
+  server: 203.0.113.10
+  port: 443
+  uuid: YOUR_UUID
+  network: tcp
+  udp: true
+  tls: true
+  flow: xtls-rprx-vision
+  servername: YOUR_SNI
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: YOUR_REALITY_PUBLIC_KEY
+    short-id: YOUR_REALITY_SHORT_ID
+- name: k-vps-resi
+  type: vless
+  server: 203.0.113.10
+  port: 8444
+  uuid: YOUR_UUID
+  network: tcp
+  udp: true
+  tls: true
+  flow: xtls-rprx-vision
+  servername: YOUR_SNI
+  client-fingerprint: chrome
+  reality-opts:
+    public-key: YOUR_REALITY_PUBLIC_KEY
+    short-id: YOUR_REALITY_SHORT_ID
+- name: k-vps-hy2
+  type: hysteria2
+  server: 203.0.113.10
+  port: 8443
+  password: YOUR_HY2_PASSWORD
+  sni: YOUR_SNI
+  alpn:
+  - h3
+  skip-cert-verify: true
+  up: '100'
+  down: '500'
+proxy-groups:
+- name: Proxy
+  type: select
+  proxies:
+  - k-vps
+  - k-vps-hy2
+  - k-vps-resi
+  - 自动选择
+  - DIRECT
+- name: 自动选择
+  type: url-test
+  url: http://www.gstatic.com/generate_204
+  interval: 300
+  tolerance: 50
+  lazy: true
+  proxies:
+  - k-vps
+  - k-vps-hy2
+rules:
+- IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+- IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+- IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+- IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+- IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+- IP-CIDR,203.0.113.10/32,DIRECT,no-resolve
+- AND,((PROCESS-NAME,claude),(NETWORK,UDP)),REJECT
+- PROCESS-NAME,claude,k-vps-resi
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,anthropic.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claude.ai)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claude.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,clau.de)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claudemcpclient.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claudemcpcontent.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claudeusercontent.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,openai.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,chatgpt.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,oaistatic.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,oaiusercontent.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,sora.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,google.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,google.com.hk)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,googleapis.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,gstatic.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,googleusercontent.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-SUFFIX,gmail.com)),REJECT
+- DOMAIN-SUFFIX,anthropic.com,k-vps-resi
+- DOMAIN-SUFFIX,claude.ai,k-vps-resi
+- DOMAIN-SUFFIX,claude.com,k-vps-resi
+- DOMAIN-SUFFIX,clau.de,k-vps-resi
+- DOMAIN-SUFFIX,claudemcpclient.com,k-vps-resi
+- DOMAIN-SUFFIX,claudemcpcontent.com,k-vps-resi
+- DOMAIN-SUFFIX,claudeusercontent.com,k-vps-resi
+- DOMAIN,mcp.anthropic.com,k-vps-resi
+- DOMAIN,console.anthropic.com,k-vps-resi
+- DOMAIN,workbench.anthropic.com,k-vps-resi
+- DOMAIN,cdn.anthropic.com,k-vps-resi
+- DOMAIN,servd-anthropic-website.b-cdn.net,k-vps-resi
+- DOMAIN,anthropic.com.cdn.cloudflare.net,k-vps-resi
+- DOMAIN,anthropic.auth0.com,k-vps-resi
+- DOMAIN,anthropic-com.ghost.io,k-vps-resi
+- DOMAIN-SUFFIX,sentry.io,k-vps-resi
+- DOMAIN-SUFFIX,statsigapi.net,k-vps-resi
+- DOMAIN,browser-intake-us5-datadoghq.com,k-vps-resi
+- DOMAIN-KEYWORD,datadog,k-vps-resi
+- DOMAIN-KEYWORD,sentry,k-vps-resi
+- DOMAIN-SUFFIX,intercom.io,k-vps-resi
+- DOMAIN-SUFFIX,intercomcdn.com,k-vps-resi
+- DOMAIN,cdn.usefathom.com,k-vps-resi
+- DOMAIN-KEYWORD,sift,k-vps-resi
+- GEOSITE,anthropic,k-vps-resi
+- DOMAIN-SUFFIX,openai.com,k-vps-resi
+- DOMAIN-SUFFIX,chatgpt.com,k-vps-resi
+- DOMAIN-SUFFIX,oaistatic.com,k-vps-resi
+- DOMAIN-SUFFIX,oaiusercontent.com,k-vps-resi
+- DOMAIN-SUFFIX,sora.com,k-vps-resi
+- DOMAIN-SUFFIX,google.com,k-vps-resi
+- DOMAIN-SUFFIX,google.com.hk,k-vps-resi
+- DOMAIN-SUFFIX,googleapis.com,k-vps-resi
+- DOMAIN-SUFFIX,gstatic.com,k-vps-resi
+- DOMAIN-SUFFIX,googleusercontent.com,k-vps-resi
+- DOMAIN-SUFFIX,gmail.com,k-vps-resi
+- DOMAIN-SUFFIX,google-analytics.com,k-vps
+- DOMAIN-SUFFIX,googletagmanager.com,k-vps
+- DOMAIN-SUFFIX,doubleclick.net,k-vps
+- IP-CIDR,160.79.104.0/21,k-vps-resi,no-resolve
+- IP-CIDR6,2607:6bc0::/32,k-vps-resi,no-resolve
+- IP-ASN,399358,k-vps-resi
+- GEOSITE,category-ntp,k-vps
+- GEOIP,CN,DIRECT
+- MATCH,Proxy

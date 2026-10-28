@@ -1,0 +1,53 @@
+# AI 服务域名清单（Clash / mihomo DOMAIN-SUFFIX 用）
+# 说明：这些域名走「住宅 IPv6」出口；YouTube 相关（youtube.com / googlevideo.com / ytimg.com）刻意不在此列。
+
+# --- Claude / Anthropic ---
+anthropic.com
+claude.ai
+claude.com
+clau.de
+claudemcpclient.com
+claudemcpcontent.com
+claudeusercontent.com
+# 显式主机（已被上面的后缀覆盖，保留便于排查）
+mcp.anthropic.com
+console.anthropic.com
+workbench.anthropic.com
+cdn.anthropic.com
+servd-anthropic-website.b-cdn.net
+anthropic.com.cdn.cloudflare.net
+anthropic.auth0.com
+anthropic-com.ghost.io
+
+# --- OpenAI ---
+openai.com
+chatgpt.com
+oaistatic.com
+oaiusercontent.com
+sora.com
+
+# --- Google（账号 / 搜索 / Gemini，不含 YouTube）---
+google.com
+google.com.hk
+googleapis.com
+gstatic.com
+googleusercontent.com
+gmail.com
+
+# --- 遥测 / 客服 widget（与主站出口保持一致，避免地域不一致）---
+sentry.io
+statsigapi.net
+browser-intake-us5-datadoghq.com
+intercom.io
+intercomcdn.com
+cdn.usefathom.com
+
+# --- 关键词兜底 ---
+# DOMAIN-KEYWORD,datadog
+# DOMAIN-KEYWORD,sift
+# DOMAIN-KEYWORD,sentry
+
+# --- IP / ASN 兜底 ---
+# IP-CIDR,160.79.104.0/21,no-resolve
+# IP-CIDR6,2607:6bc0::/32,no-resolve
+# IP-ASN,399358

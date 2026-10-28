@@ -268,18 +268,33 @@ SQL
 
 ## 告警语义
 
-客户端出口监控（如 Claude Radar）应区分三态，而不是一律叫「出口不对」：
+服务端已经把出口固定为「住宅 IPv6 或直接失败」，所以**不需要周期性探测**。
+客户端的 Claude Radar 默认关闭出口探测（`/api/probe`，默认 `enabled:false`），
+只保留两条零额外流量的被动告警：
 
-| 探测结果 | 含义 | 处理 |
+| 触发条件 | 含义 | 处理 |
 |---|---|---|
-| `ip=2600:1700:…` | 住宅链路正常 | 清除告警 |
-| 连接失败 / 被阻断（连续 2 次） | **保护生效**：没有住宅 IPv6 通路 | 通知「家宽出口已掐断」，提示检查住宅链路或额度，不当作泄漏 |
-| 连接成功但 IP 不是住宅前缀 | **疑似泄漏**，需要立即排查 | 立即通知并附带实际 IP，检查例外清单与 `inet4_bind_address` 是否被改动 |
+| 真实 Claude 连接的出站不是住宅（`exit=datacenter`，5 分钟内） | **疑似泄漏**：流量走了机房出口 | 立即通知并附域名，检查例外清单 / `inet4_bind_address` / 客户端规则 |
+| 真实 Claude 连接连续失败（3 次，5 分钟内） | 链路不可用 | 通知「Claude 连接连续失败」，查住宅额度或隧道 |
 
-生产上，`ipv6_only` + `inet4_bind_address: 127.0.0.1` 之后「成功但非住宅」应只可能来自两处：
-① 命中显式例外；② 有人改了服务端配置。第 ② 种必须当故障处理。
+需要主动体检时再打开开关，不占常规流量：
 
----
+```bash
+# 查看状态（默认关闭）
+curl -s http://127.0.0.1:8799/api/probe
+
+# 打开（每 1 小时一次），或手动触发一次
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{"enabled":true,"intervalMs":3600000}' http://127.0.0.1:8799/api/probe
+curl -s -X POST http://127.0.0.1:8799/api/probe/run
+
+# 关闭
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{"enabled":false}' http://127.0.0.1:8799/api/probe
+```
+
+Claude Radar 的状态栏菜单里也有「出口探测：开 / 关 / 立即探测一次」三个入口，
+开关状态持久化在 `~/.local/state/claude-radar/radar.config.json`。
 
 ## 常见坑
 

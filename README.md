@@ -268,33 +268,17 @@ SQL
 
 ## 告警语义
 
-服务端已经把出口固定为「住宅 IPv6 或直接失败」，所以**不需要周期性探测**。
-客户端的 Claude Radar 默认关闭出口探测（`/api/probe`，默认 `enabled:false`），
-只保留两条零额外流量的被动告警：
+服务端已经把出口固定为「住宅 IPv6 或直接失败」，**不需要任何周期性探测**。
+客户端的 Claude Radar 已移除探测逻辑（`/api/probe` 返回 404），
+告警完全基于 mihomo 的真实连接记录，零额外流量：
 
 | 触发条件 | 含义 | 处理 |
 |---|---|---|
 | 真实 Claude 连接的出站不是住宅（`exit=datacenter`，5 分钟内） | **疑似泄漏**：流量走了机房出口 | 立即通知并附域名，检查例外清单 / `inet4_bind_address` / 客户端规则 |
 | 真实 Claude 连接连续失败（3 次，5 分钟内） | 链路不可用 | 通知「Claude 连接连续失败」，查住宅额度或隧道 |
 
-需要主动体检时再打开开关，不占常规流量：
-
-```bash
-# 查看状态（默认关闭）
-curl -s http://127.0.0.1:8799/api/probe
-
-# 打开（每 1 小时一次），或手动触发一次
-curl -s -X POST -H 'content-type: application/json' \
-  -d '{"enabled":true,"intervalMs":3600000}' http://127.0.0.1:8799/api/probe
-curl -s -X POST http://127.0.0.1:8799/api/probe/run
-
-# 关闭
-curl -s -X POST -H 'content-type: application/json' \
-  -d '{"enabled":false}' http://127.0.0.1:8799/api/probe
-```
-
-Claude Radar 的状态栏菜单里也有「出口探测：开 / 关 / 立即探测一次」三个入口，
-开关状态持久化在 `~/.local/state/claude-radar/radar.config.json`。
+“当前出口”卡片直接显示最近一条真实连接的家宽 IPv6，不再依赖探测记录。
+历史 `probe` 记录已从事件库清理，界面只保留「真实流量 / 全部」两个视图。
 
 ## 常见坑
 

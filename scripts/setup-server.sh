@@ -90,11 +90,13 @@ fi )
   ],
   "outbounds": [
     { "type": "direct", "tag": "direct" },
-    { "type": "direct", "tag": "resi6", "inet6_bind_address": "${RESI6}" }
+    { "type": "direct", "tag": "resi6", "inet6_bind_address": "${RESI6}", "inet4_bind_address": "127.0.0.1" }
   ],
   "route": {
     "rules": [
-      { "inbound": [ "vless-resi" ], "action": "resolve", "strategy": "prefer_ipv6" },
+      { "inbound": [ "vless-resi" ], "domain": [ "sentry.io", "statsigapi.net", "intercom.io", "intercomcdn.com", "servd-anthropic-website.b-cdn.net", "openai.com" ], "outbound": "direct" },
+      { "inbound": [ "vless-resi" ], "domain_suffix": [ "oaiusercontent.com" ], "outbound": "direct" },
+      { "inbound": [ "vless-resi" ], "action": "resolve", "strategy": "ipv6_only" },
       { "inbound": [ "vless-resi" ], "ip_version": 4, "action": "reject" },
       { "inbound": [ "vless-resi" ], "outbound": "resi6" }
     ],

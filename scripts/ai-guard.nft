@@ -1,0 +1,12 @@
+# ai-guard.nft — 机房侧兜底：禁止 IPv4 出站到 Anthropic 网段
+# 住宅链路必须走 IPv6；这条规则把「配置被改坏时回退 IPv4」的窗口也堵上。
+# 安装：sudo nft -f scripts/ai-guard.nft
+# 查看：nft list table inet ai_guard
+table inet ai_guard
+delete table inet ai_guard
+table inet ai_guard {
+  chain output {
+    type filter hook output priority 0; policy accept;
+    ip daddr 160.79.104.0/21 counter drop comment "anthropic-ipv4-kill"
+  }
+}

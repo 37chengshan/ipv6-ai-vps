@@ -1,0 +1,12 @@
+[Unit]
+Description=AI IPv4 egress guard (anthropic ranges)
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/ai-guard.nft
+ExecStop=/usr/sbin/nft delete table inet ai_guard
+
+[Install]
+WantedBy=multi-user.target

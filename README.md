@@ -41,11 +41,19 @@
 ```
 
 - 住宅入口的 `route.rules`：
-  1. `action: resolve` + `strategy: prefer_ipv6`
+  0. **IPv4 例外**：`sentry.io` / `statsigapi.net` / `intercom.io` / `intercomcdn.com` /
+     `servd-anthropic-website.b-cdn.net` / `openai.com`，以及 `*.oaiusercontent.com`
+     → `outbound: direct`（显式走机房 IPv4；这些域名公开 DNS 只有 A，
+     或属于遥测/CDN，拿住宅 IP 没有意义）
+  1. `action: resolve` + `strategy: ipv6_only`
   2. `ip_version: 4` → `action: reject`
-  3. 其余 → `outbound: resi6`（该出站绑定住宅 `/128`）
+  3. 其余 → `outbound: resi6`（绑定住宅 `/128`）
 
-这样即使某个域名只有 A 记录，连接会**直接失败**，而不是悄悄从机房 IPv4 出去。
+- **掐断而不是回退**：住宅出站 `resi6` 同时设置 `inet4_bind_address: "127.0.0.1"`，
+  再加上 `ipv6_only`，任何拿不到 AAAA 的目标都会直接失败，不可能从机房 IPv4 出去。
+  实测：临时移出例外的 A-only 域名返回 000（超时/重置），不会走 IPv4。
+- 机房侧另有 `aether-ai-guard.service`（nftables）丢弃对 `160.79.104.0/21` 的 IPv4 出站，
+  作为 Anthropic 方向的双保险。
 
 ---
 
@@ -215,18 +223,61 @@ curl -s -o /dev/null -w '%{http_code}\n' https://api.anthropic.com/v1/models   #
 
 ## 验证
 
+一键检查（在客户端跑，需经代理 TUN）：
+
 ```bash
-# AI 出口必须是住宅 IPv6
-curl -s https://claude.ai/cdn-cgi/trace | grep -E '^(ip|loc)='
-# 期望：ip=<住宅 IPv6>  loc=US
-
-# 普通流量必须是机房
-curl -s https://ipinfo.io/ip
-
-# 服务端失败关闭：住宅入口访问 IPv4-only 目标必须失败
-curl -x http://127.0.0.1:8444 -s -m 5 -o /dev/null -w '%{http_code}\n' https://1.1.1.1
-# 期望：连接失败（000 / curl 非 0），而不是 200
+sh scripts/verify-egress.sh
+# 期望：claude.ai / chatgpt.com / ws.chatgpt.com = 2600:1700:…（住宅 v6）
+#       openai.com / files.oaiusercontent.com = 23.246.166.75（显式例外，走机房 v4）
+#       RESULT: PASS
 ```
+
+手工核对：
+
+```bash
+curl -s https://claude.ai/cdn-cgi/trace | grep -E '^(ip|loc)='
+# 期望：ip=2600:1700:…  loc=US
+
+curl -s https://chatgpt.com/cdn-cgi/trace | grep -E '^ip='
+# 期望：同上，住宅 IPv6
+
+# 例外域名：显式走机房 IPv4
+curl -s https://openai.com/cdn-cgi/trace | grep -E '^ip='
+# 期望：ip=23.246.166.75
+
+# 失败关闭：不在例外清单里的 IPv4-only 目标必须直接失败
+# （临时把某域名从例外里移除后测试；期望 000 / curl 非 0）
+```
+
+服务端侧核对：
+
+```bash
+systemctl is-active sing-box aether-flowd aether-ai-guard
+sing-box check -c /etc/sing-box/config.json
+nft list table inet ai_guard | grep counter   # packets/bytes 应长期为 0
+python3 - <<'SQL'
+import sqlite3, time
+c = sqlite3.connect("/var/lib/aether-usage/flows.db")
+since = int(time.time()) - 900
+for r in c.execute("select outbound,sum(up),sum(down) from flows where minute>=? group by outbound", [since]):
+    print(r)
+SQL
+```
+
+---
+
+## 告警语义
+
+客户端出口监控（如 Claude Radar）应区分三态，而不是一律叫「出口不对」：
+
+| 探测结果 | 含义 | 处理 |
+|---|---|---|
+| `ip=2600:1700:…` | 住宅链路正常 | 清除告警 |
+| 连接失败 / 被阻断（连续 2 次） | **保护生效**：没有住宅 IPv6 通路 | 通知「家宽出口已掐断」，提示检查住宅链路或额度，不当作泄漏 |
+| 连接成功但 IP 不是住宅前缀 | **疑似泄漏**，需要立即排查 | 立即通知并附带实际 IP，检查例外清单与 `inet4_bind_address` 是否被改动 |
+
+生产上，`ipv6_only` + `inet4_bind_address: 127.0.0.1` 之后「成功但非住宅」应只可能来自两处：
+① 命中显式例外；② 有人改了服务端配置。第 ② 种必须当故障处理。
 
 ---
 
@@ -238,7 +289,9 @@ curl -x http://127.0.0.1:8444 -s -m 5 -o /dev/null -w '%{http_code}\n' https://1
 | 某些站点解析到国内 CDN，被判直连 | 用国内 DoH 解析国外域名 | 国外域名走 `#Proxy` 的 DoH，国内用 `geosite:cn` 策略 |
 | 页面加载一半失败 | QUIC 走 UDP 绕过规则 | 对 AI 域名 `REJECT` UDP，让浏览器回落 TCP |
 | 客户端偶尔直连 | 客户端开了 IPv6 | 关掉客户端 IPv6，`ipv6: false` |
-| 家宽 IPv6 目标连不上 | 目标只有 A 记录 | 这是预期：失败关闭，不会回落 IPv4 |
+| 家宽 IPv6 目标连不上 | 目标只有 A 记录，且不在例外清单 | 预期：失败关闭，不会回落 IPv4；确需使用就加进例外（走机房 v4） |
+| 例外域名走了住宅 | 例外规则排在 `resolve` 之后 | 例外必须放在 `route.rules` 最前面 |
+| 出口偶尔变成机房 IPv4 | 旧配置 `prefer_ipv6` 会回退 | 用 `ipv6_only` + `inet4_bind_address: 127.0.0.1`，见上文 |
 | 三个 `/128` 被识别为同一用户 | 商家分配的接口标识相同 | 找商家换不同后缀，或只用其中一个 |
 
 ---
@@ -251,6 +304,22 @@ curl -x http://127.0.0.1:8444 -s -m 5 -o /dev/null -w '%{http_code}\n' https://1
 
 ---
 
+## 可选：出口观测与兜底
+
+| 组件 | 作用 | 安装 |
+|---|---|---|
+| `scripts/flowd.py` | 通过 sing-box `clash_api` 每 1 秒采样，按「域名 / 出站 / 客户端 IP」写入 `/var/lib/aether-usage/flows.db`（保留 8 天） | 见 `scripts/units/aether-flowd.service` |
+| `scripts/ai-guard.nft` | 机房侧 nftables 兜底，禁止 IPv4 出站到 `160.79.104.0/21` | `sudo nft -f scripts/ai-guard.nft` + `scripts/units/aether-ai-guard.service` |
+
+启用观测前需要在服务器侧给 sing-box 打开 clash_api：
+
+```json
+"experimental": { "clash_api": { "external_controller": "127.0.0.1:2092" } }
+```
+
+采样器的已知局限：只记录采样瞬间仍存活的连接，**1 秒内建完就关的短连接会被漏掉**，
+所以 `flows.db` 适合定位「谁在吃流量」，不适合与账单逐字节对账。
+
 ## 仓库结构
 
 ```
@@ -262,6 +331,9 @@ rules/ai-domains.txt               # AI 域名清单
 scripts/setup-server.sh            # 一键服务端部署（读环境变量）
 scripts/gen-subscriptions.py       # 生成 Clash / base64 / sing-box 三种订阅
 scripts/configure-claude-cli.sh    # 写入/撤销 Claude Code 的代理与遥测开关
+scripts/verify-egress.sh           # 客户端出口矩阵检查
+scripts/flowd.py                   # 可选：按域名/出站采集流量（sing-box clash_api）
+scripts/ai-guard.nft               # 可选：机房侧 IPv4 出站兜底（nftables）
 skills/claude-cli-network/SKILL.md # 可作为 agent skill 使用：Claude CLI 网络配置与验证
 ```
 

@@ -145,17 +145,20 @@
     {
       "type": "direct",
       "tag": "resi6",
-      "inet6_bind_address": "RESIDENTIAL_IPV6"
+      "inet6_bind_address": "RESIDENTIAL_IPV6",
+      "inet4_bind_address": "127.0.0.1"
     },
     {
       "type": "direct",
       "tag": "resi6b",
-      "inet6_bind_address": "RESIDENTIAL_IPV6"
+      "inet6_bind_address": "RESIDENTIAL_IPV6",
+      "inet4_bind_address": "127.0.0.1"
     },
     {
       "type": "direct",
       "tag": "resi6c",
-      "inet6_bind_address": "RESIDENTIAL_IPV6"
+      "inet6_bind_address": "RESIDENTIAL_IPV6",
+      "inet4_bind_address": "127.0.0.1"
     }
   ],
   "route": {
@@ -164,8 +167,77 @@
         "inbound": [
           "vless-resi"
         ],
+        "domain": [
+          "sentry.io",
+          "statsigapi.net",
+          "intercom.io",
+          "intercomcdn.com",
+          "servd-anthropic-website.b-cdn.net",
+          "openai.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "inbound": [
+          "vless-resi"
+        ],
+        "domain_suffix": [
+          "oaiusercontent.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "inbound": [
+          "vless-resi2"
+        ],
+        "domain": [
+          "sentry.io",
+          "statsigapi.net",
+          "intercom.io",
+          "intercomcdn.com",
+          "servd-anthropic-website.b-cdn.net",
+          "openai.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "inbound": [
+          "vless-resi2"
+        ],
+        "domain_suffix": [
+          "oaiusercontent.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "inbound": [
+          "vless-resi3"
+        ],
+        "domain": [
+          "sentry.io",
+          "statsigapi.net",
+          "intercom.io",
+          "intercomcdn.com",
+          "servd-anthropic-website.b-cdn.net",
+          "openai.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "inbound": [
+          "vless-resi3"
+        ],
+        "domain_suffix": [
+          "oaiusercontent.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "inbound": [
+          "vless-resi"
+        ],
         "action": "resolve",
-        "strategy": "prefer_ipv6"
+        "strategy": "ipv6_only"
       },
       {
         "inbound": [
@@ -185,7 +257,7 @@
           "vless-resi2"
         ],
         "action": "resolve",
-        "strategy": "prefer_ipv6"
+        "strategy": "ipv6_only"
       },
       {
         "inbound": [
@@ -205,7 +277,7 @@
           "vless-resi3"
         ],
         "action": "resolve",
-        "strategy": "prefer_ipv6"
+        "strategy": "ipv6_only"
       },
       {
         "inbound": [

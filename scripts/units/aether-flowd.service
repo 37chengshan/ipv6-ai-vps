@@ -1,0 +1,13 @@
+[Unit]
+Description=Aether usage per-host flow sampler (sing-box clash API)
+After=sing-box.service
+Wants=sing-box.service
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/usage/flowd.py
+Restart=always
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

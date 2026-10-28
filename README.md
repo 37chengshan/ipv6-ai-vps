@@ -166,6 +166,53 @@ dns:
 
 ---
 
+## Claude Code CLI 配置
+
+浏览器走系统代理，而 Claude Code 只认自己的配置。让它稳定走指定出口，三件事：
+
+```bash
+bash scripts/configure-claude-cli.sh --proxy http://127.0.0.1:7890
+```
+
+写入 `~/.claude/settings.json`：
+
+```json
+{
+  "env": {
+    "HTTP_PROXY": "http://127.0.0.1:7890",
+    "HTTPS_PROXY": "http://127.0.0.1:7890",
+    "NO_PROXY": "127.0.0.1,localhost,::1",
+    "DO_NOT_TRACK": "1"
+  }
+}
+```
+
+| 变量 | 为什么必须 |
+|---|---|
+| `HTTP(S)_PROXY` | 配了代理就**不会回落直连**：端口不通直接报错，符合失败关闭 |
+| `NO_PROXY` | 本地回环（MCP、daemon）不走代理 |
+| `DO_NOT_TRACK` | 关掉 Datadog 等遥测，少一类「出口不一致」的干扰 |
+
+验证：
+
+```bash
+claude --debug -p "ok" --output-format text      # debug 日志里应出现 settingsEnv keys
+grep -i settingsEnv ~/.claude/debug/*.txt | tail -1
+curl -s https://claude.ai/cdn-cgi/trace | grep -E '^(ip|loc)='   # 期望住宅 IPv6 + US
+curl -s -o /dev/null -w '%{http_code}\n' https://api.anthropic.com/v1/models   # 401 = 链路通
+```
+
+注意：
+
+- **不支持 SOCKS**，`--proxy` 必须是 `http(s)://`
+- 修改后要重启会话；后台 agent 由 supervisor 托管，建议 `claude daemon stop --any` 后重开
+- macOS 反复弹「钥匙串请求密码」时执行一次：
+  `security set-generic-password-partition-list -S apple-tool:,apple: -s "Claude Code-credentials"`
+
+完整操作手册见 [`skills/claude-cli-network/SKILL.md`](skills/claude-cli-network/SKILL.md)（可直接作为 agent skill 安装使用）。
+
+---
+
 ## 验证
 
 ```bash
@@ -214,6 +261,8 @@ configs/
 rules/ai-domains.txt               # AI 域名清单
 scripts/setup-server.sh            # 一键服务端部署（读环境变量）
 scripts/gen-subscriptions.py       # 生成 Clash / base64 / sing-box 三种订阅
+scripts/configure-claude-cli.sh    # 写入/撤销 Claude Code 的代理与遥测开关
+skills/claude-cli-network/SKILL.md # 可作为 agent skill 使用：Claude CLI 网络配置与验证
 ```
 
 ## License

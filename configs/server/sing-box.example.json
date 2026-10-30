@@ -173,7 +173,8 @@
           "intercom.io",
           "intercomcdn.com",
           "servd-anthropic-website.b-cdn.net",
-          "openai.com"
+          "openai.com",
+          "downloads.claude.ai"
         ],
         "outbound": "direct"
       },
@@ -196,7 +197,8 @@
           "intercom.io",
           "intercomcdn.com",
           "servd-anthropic-website.b-cdn.net",
-          "openai.com"
+          "openai.com",
+          "downloads.claude.ai"
         ],
         "outbound": "direct"
       },
@@ -219,7 +221,8 @@
           "intercom.io",
           "intercomcdn.com",
           "servd-anthropic-website.b-cdn.net",
-          "openai.com"
+          "openai.com",
+          "downloads.claude.ai"
         ],
         "outbound": "direct"
       },

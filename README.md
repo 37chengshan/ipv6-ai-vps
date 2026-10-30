@@ -42,7 +42,8 @@
 
 - 住宅入口的 `route.rules`：
   0. **IPv4 例外**：`sentry.io` / `statsigapi.net` / `intercom.io` / `intercomcdn.com` /
-     `servd-anthropic-website.b-cdn.net` / `openai.com`，以及 `*.oaiusercontent.com`
+     `servd-anthropic-website.b-cdn.net` / `openai.com` / `downloads.claude.ai`，
+     以及 `*.oaiusercontent.com`
      → `outbound: direct`（显式走机房 IPv4；这些域名公开 DNS 只有 A，
      或属于遥测/CDN，拿住宅 IP 没有意义）
   1. `action: resolve` + `strategy: ipv6_only`
@@ -216,6 +217,12 @@ curl -s -o /dev/null -w '%{http_code}\n' https://api.anthropic.com/v1/models   #
 - 修改后要重启会话；后台 agent 由 supervisor 托管，建议 `claude daemon stop --any` 后重开
 - macOS 反复弹「钥匙串请求密码」时执行一次：
   `security set-generic-password-partition-list -S apple-tool:,apple: -s "Claude Code-credentials"`
+
+**自动更新**：建议关闭（本项目按需手动更新），在 `~/.claude/settings.json` 写
+`"env": { "DISABLE_AUTOUPDATER": "1" }`；`claude doctor` 会显示
+`Auto-updates: disabled (set by env: DISABLE_AUTOUPDATER)`。
+`downloads.claude.ai` 只有 A 记录，已列入 IPv4 例外；否则更新会在住宅入口被掐断
+（表现为 `Failed to fetch version ... Socket is closed`）。
 
 完整操作手册见 [`skills/claude-cli-network/SKILL.md`](skills/claude-cli-network/SKILL.md)（可直接作为 agent skill 安装使用）。
 

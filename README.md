@@ -50,6 +50,12 @@
   2. `ip_version: 4` → `action: reject`
   3. 其余 → `outbound: resi6`（绑定住宅 `/128`）
 
+- **机房入口的兜底（2026-11-06）**：`vless-direct(443)` 与 `hy2-direct(8443)` 现在对
+  `ai-labs-domains`（Claude/Anthropic + OpenAI 全家族）直接 `reject`，并额外 reject
+  `160.79.104.0/21` 与 `2607:6bc0::/32`。含义：**即使某台设备的规则缺失/过期、把 AI 域名
+  送到了机房入口，服务端也不会让它从机房出去**——要么走住宅入口，要么失败。故障面从
+  「静默泄漏」变成「立刻连不上」，便于定位那台设备。
+
 - **掐断而不是回退**：住宅出站 `resi6` 同时设置 `inet4_bind_address: "127.0.0.1"`，
   再加上 `ipv6_only`，任何拿不到 AAAA 的目标都会直接失败，不可能从机房 IPv4 出去。
   实测：临时移出例外的 A-only 域名返回 000（超时/重置），不会走 IPv4。
@@ -151,14 +157,18 @@ dns:
     "geosite:cn": ["https://doh.pub/dns-query"]
 ```
 
-`rules` 段顺序不能乱：
+`rules` 段顺序不能乱（2026-11-06 起 82 条）：
 
 1. 私网 / 本机 CIDR → `DIRECT`
-2. `AND,((NETWORK,UDP),(DOMAIN-SUFFIX,anthropic.com)),REJECT` 等 18 条 QUIC 拒绝
-3. AI 域名 → `RESI`（Claude / OpenAI / Google / 遥测 / 客服 widget）
-4. Anthropic 自有网段与 ASN → `RESI`
-5. `GEOIP,CN → DIRECT`
-6. `MATCH → Proxy`
+2. **进程级兜底**：`PROCESS-NAME,claude` + `PROCESS-PATH-REGEX,.*/claude/versions/.*`
+   → `RESI`，同进程的 UDP/QUIC 一律 `REJECT`。
+   原因：`~/.local/bin/claude` 是 symlink，mihomo 解析真实路径后 process 名是版本号，
+   只写 `PROCESS-NAME` 匹配不到；路径规则才是 CLI 的可靠兜底。
+3. `AND,((NETWORK,UDP),(DOMAIN-SUFFIX,...))` / `(DOMAIN-KEYWORD,...)` → `REJECT`（QUIC 拒绝）
+4. AI 域名（后缀 + 关键字）→ `RESI`（Claude / OpenAI / Google / 遥测 / 客服 widget）
+5. Anthropic 自有网段与 ASN → `RESI`
+6. `GEOIP,CN → DIRECT`
+7. `MATCH → Proxy`（机房）
 
 完整域名清单见 [`rules/ai-domains.txt`](rules/ai-domains.txt)，覆盖：
 
@@ -167,6 +177,10 @@ dns:
 - Google（不含 YouTube）：`google.com`、`googleapis.com`、`gstatic.com`、`googleusercontent.com`、`gmail.com`、`google.com.hk`
 - 遥测 / 客服：`sentry.io`、`statsigapi.net`、`browser-intake-us5-datadoghq.com`、`intercom.io`、`intercomcdn.com`、`cdn.usefathom.com`
 - 兜底：`IP-CIDR,160.79.104.0/21`、`IP-CIDR6,2607:6bc0::/32`、`IP-ASN,399358`
+- **关键字兜底（2026-11-06）**：`DOMAIN-KEYWORD,claude` / `anthropic` / `openai`——清单外的新域名
+  （同厂商的新注册域、新 CDN）也会留在住宅出口。唯一例外是先于关键字匹配的
+  `DOMAIN-SUFFIX,vsassets.io`（VS Code 市场 CDN，30 天实测 373MB/239MB，非 AI 流量，留在机房）。
+  顺带把过宽的 `DOMAIN-KEYWORD,sift` 收窄成 `DOMAIN-SUFFIX,siftscience.com`。
 
 ### iOS
 
@@ -292,6 +306,7 @@ SQL
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | AI 流量走了机房 | 域名规则写在 `GEOIP,CN` 之后，或节点名写错 | 规则顺序：UDP 拒绝 → 域名 → IP → GeoIP → MATCH |
+| 某台设备 Claude/ChatGPT 突然连不上（服务端 reject） | 该设备用的是旧 profile 或纯节点订阅，把 AI 域名送到了 443 机房入口；服务端 2026-11-06 起 fail-closed | 用 `flows.db` 的 `src` 定位设备，换成带规则的客户端配置；这是「不泄漏就断」的预期行为 |
 | 某些站点解析到国内 CDN，被判直连 | 用国内 DoH 解析国外域名 | 国外域名走 `#Proxy` 的 DoH，国内用 `geosite:cn` 策略 |
 | 页面加载一半失败 | QUIC 走 UDP 绕过规则 | 对 AI 域名 `REJECT` UDP，让浏览器回落 TCP |
 | 客户端偶尔直连 | 客户端开了 IPv6 | 关掉客户端 IPv6，`ipv6: false` |

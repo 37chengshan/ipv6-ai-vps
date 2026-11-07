@@ -43,9 +43,18 @@ intercomcdn.com
 cdn.usefathom.com
 
 # --- 关键词兜底 ---
+# 2026-11-06：清单外的新域名（同一厂商的新注册域/新 CDN）靠关键字留住，避免落到机房。
+# DOMAIN-KEYWORD,claude
+# DOMAIN-KEYWORD,anthropic
+# DOMAIN-KEYWORD,openai
 # DOMAIN-KEYWORD,datadog
-# DOMAIN-KEYWORD,sift
 # DOMAIN-KEYWORD,sentry
+# DOMAIN-SUFFIX,siftscience.com      （原 DOMAIN-KEYWORD,sift 过宽，会误伤 giftsift 之类）
+#
+# 例外（先于关键字规则，走机房）：VS Code 市场 CDN 上带厂商名的静态资源，
+# 30 天实测 openai.gallerycdn.vsassets.io 373MB / anthropic.gallerycdn.vsassets.io 239MB，
+# 属于扩展下载，与账号无关。
+# DOMAIN-SUFFIX,vsassets.io
 
 # --- IP / ASN 兜底 ---
 # IP-CIDR,160.79.104.0/21,no-resolve

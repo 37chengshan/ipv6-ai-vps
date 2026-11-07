@@ -38,6 +38,14 @@ dns:
     - https://1.1.1.1/dns-query#k-vps
     +.claude.ai:
     - https://1.1.1.1/dns-query#k-vps
+    +.anthropic.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.clau.de:
+    - https://1.1.1.1/dns-query#k-vps
+    +.claudemcpclient.com:
+    - https://1.1.1.1/dns-query#k-vps
+    +.claudemcpcontent.com:
+    - https://1.1.1.1/dns-query#k-vps
     +.claude.com:
     - https://1.1.1.1/dns-query#k-vps
     +.claudeusercontent.com:
@@ -131,6 +139,15 @@ rules:
 - IP-CIDR,203.0.113.10/32,DIRECT,no-resolve
 - AND,((PROCESS-NAME,claude),(NETWORK,UDP)),REJECT
 - PROCESS-NAME,claude,k-vps-resi
+# ★ 进程级兜底（2026-11-06）：~/.local/bin/claude 是 symlink，指向
+#   ~/.local/share/claude/versions/<ver>；mihomo 解析真实路径后 process 名是版本号，
+#   上面的 PROCESS-NAME,claude 对官方安装方式匹配不到。这里按真实路径再钉一次，
+#   保证 CLI 的任何（包括未来新增的）域名都从住宅出口走；UDP/QUIC 一律拒绝。
+- AND,((PROCESS-PATH-REGEX,.*/claude/versions/.*),(NETWORK,UDP)),REJECT
+- PROCESS-PATH-REGEX,.*/claude/versions/.*,k-vps-resi
+# Claude 桌面端（若安装/运行）
+- AND,((PROCESS-PATH-REGEX,/Applications/Claude.app/.*),(NETWORK,UDP)),REJECT
+- PROCESS-PATH-REGEX,/Applications/Claude.app/.*,k-vps-resi
 - AND,((NETWORK,UDP),(DOMAIN-SUFFIX,anthropic.com)),REJECT
 - AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claude.ai)),REJECT
 - AND,((NETWORK,UDP),(DOMAIN-SUFFIX,claude.com)),REJECT
@@ -149,6 +166,9 @@ rules:
 - AND,((NETWORK,UDP),(DOMAIN-SUFFIX,gstatic.com)),REJECT
 - AND,((NETWORK,UDP),(DOMAIN-SUFFIX,googleusercontent.com)),REJECT
 - AND,((NETWORK,UDP),(DOMAIN-SUFFIX,gmail.com)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-KEYWORD,claude)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-KEYWORD,anthropic)),REJECT
+- AND,((NETWORK,UDP),(DOMAIN-KEYWORD,openai)),REJECT
 - DOMAIN-SUFFIX,anthropic.com,k-vps-resi
 - DOMAIN-SUFFIX,claude.ai,k-vps-resi
 - DOMAIN-SUFFIX,claude.com,k-vps-resi
@@ -172,7 +192,15 @@ rules:
 - DOMAIN-SUFFIX,intercom.io,k-vps-resi
 - DOMAIN-SUFFIX,intercomcdn.com,k-vps-resi
 - DOMAIN,cdn.usefathom.com,k-vps-resi
-- DOMAIN-KEYWORD,sift,k-vps-resi
+- DOMAIN-SUFFIX,siftscience.com,k-vps-resi
+# ★ 厂商名兜底（2026-11-06）：清单里没列过的新域名（未来新增的 CDN/遥测/子品牌）
+#   只要带厂商名就留在住宅出口，避免"新域名默认落到机房"。
+#   例外：VS Code 市场 CDN 上带 vendor 名的静态资源（30 天实测 373MB / 239MB），
+#   属于扩展下载、与账号无关，保留在机房；必须先于下面的 KEYWORD 规则。
+- DOMAIN-SUFFIX,vsassets.io,k-vps
+- DOMAIN-KEYWORD,claude,k-vps-resi
+- DOMAIN-KEYWORD,anthropic,k-vps-resi
+- DOMAIN-KEYWORD,openai,k-vps-resi
 - GEOSITE,anthropic,k-vps-resi
 - DOMAIN-SUFFIX,openai.com,k-vps-resi
 - DOMAIN-SUFFIX,chatgpt.com,k-vps-resi

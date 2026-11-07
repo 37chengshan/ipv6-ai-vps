@@ -162,76 +162,85 @@
     }
   ],
   "route": {
+    "rule_set": [
+      {
+        "type": "inline",
+        "tag": "ai-labs-domains",
+        "rules": [
+          {
+            "domain": [
+              "servd-anthropic-website.b-cdn.net",
+              "anthropic.com.cdn.cloudflare.net",
+              "anthropic-com.ghost.io"
+            ],
+            "domain_suffix": [
+              "anthropic.com",
+              "claude.ai",
+              "claude.com",
+              "clau.de",
+              "claudemcpclient.com",
+              "claudemcpcontent.com",
+              "claudeusercontent.com",
+              "openai.com",
+              "chatgpt.com",
+              "oaistatic.com",
+              "oaiusercontent.com",
+              "sora.com"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "inline",
+        "tag": "resi-v4-exceptions",
+        "rules": [
+          {
+            "domain": [
+              "sentry.io",
+              "statsigapi.net",
+              "intercom.io",
+              "intercomcdn.com",
+              "servd-anthropic-website.b-cdn.net",
+              "openai.com",
+              "downloads.claude.ai"
+            ],
+            "domain_suffix": [
+              "oaiusercontent.com"
+            ]
+          }
+        ]
+      }
+    ],
     "rules": [
       {
         "inbound": [
-          "vless-resi"
+          "vless-direct",
+          "hy2-direct"
         ],
-        "domain": [
-          "sentry.io",
-          "statsigapi.net",
-          "intercom.io",
-          "intercomcdn.com",
-          "servd-anthropic-website.b-cdn.net",
-          "openai.com",
-          "downloads.claude.ai"
+        "rule_set": [
+          "ai-labs-domains"
         ],
-        "outbound": "direct"
+        "action": "reject"
       },
       {
         "inbound": [
-          "vless-resi"
+          "vless-direct",
+          "hy2-direct"
         ],
-        "domain_suffix": [
-          "oaiusercontent.com"
+        "ip_cidr": [
+          "160.79.104.0/21",
+          "2607:6bc0::/32"
         ],
-        "outbound": "direct"
+        "action": "reject"
       },
       {
         "inbound": [
-          "vless-resi2"
-        ],
-        "domain": [
-          "sentry.io",
-          "statsigapi.net",
-          "intercom.io",
-          "intercomcdn.com",
-          "servd-anthropic-website.b-cdn.net",
-          "openai.com",
-          "downloads.claude.ai"
-        ],
-        "outbound": "direct"
-      },
-      {
-        "inbound": [
-          "vless-resi2"
-        ],
-        "domain_suffix": [
-          "oaiusercontent.com"
-        ],
-        "outbound": "direct"
-      },
-      {
-        "inbound": [
+          "vless-resi",
+          "vless-resi2",
           "vless-resi3"
         ],
-        "domain": [
-          "sentry.io",
-          "statsigapi.net",
-          "intercom.io",
-          "intercomcdn.com",
-          "servd-anthropic-website.b-cdn.net",
-          "openai.com",
-          "downloads.claude.ai"
-        ],
-        "outbound": "direct"
-      },
-      {
-        "inbound": [
-          "vless-resi3"
-        ],
-        "domain_suffix": [
-          "oaiusercontent.com"
+        "rule_set": [
+          "resi-v4-exceptions"
         ],
         "outbound": "direct"
       },

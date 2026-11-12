@@ -219,8 +219,8 @@ rules:
 # Antigravity（Google 的 agent IDE）：Hub 的 language_server 与 CLI 共用
 # cloudcode-pa / aicode / aiplatform（都在 googleapis 下，已覆盖）；
 # 未覆盖的是 antigravity-unleash.goog（feature flag）与 antigravity.google。
-- DOMAIN-SUFFIX,antigravity-unleash.goog,k-vps-resi
-- DOMAIN-SUFFIX,antigravity.google,k-vps-resi
+# 注意：这两个主机在服务端解析不到 AAAA，reso 链路（ipv6_only）会 empty result，
+# 所以不能钉住宅，交给 MATCH→Proxy（机房）。AI 推理走 googleapis，已在上面钉住宅。
 - DOMAIN-SUFFIX,gmail.com,k-vps-resi
 - DOMAIN-SUFFIX,google-analytics.com,k-vps
 - DOMAIN-SUFFIX,googletagmanager.com,k-vps

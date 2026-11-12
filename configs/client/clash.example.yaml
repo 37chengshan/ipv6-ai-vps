@@ -201,6 +201,10 @@ rules:
 - DOMAIN-KEYWORD,claude,k-vps-resi
 - DOMAIN-KEYWORD,anthropic,k-vps-resi
 - DOMAIN-KEYWORD,openai,k-vps-resi
+# Cloudflare Turnstile 需要住宅 IP：认证页与挑战组件单独钉住宅。
+# 只钉 auth.exa.ai（有 AAAA）；exa.ai / dashboard.exa.ai 只有 A 记录，留在机房。
+- DOMAIN,auth.exa.ai,k-vps-resi
+- DOMAIN-SUFFIX,challenges.cloudflare.com,k-vps-resi
 - GEOSITE,anthropic,k-vps-resi
 - DOMAIN-SUFFIX,openai.com,k-vps-resi
 - DOMAIN-SUFFIX,chatgpt.com,k-vps-resi

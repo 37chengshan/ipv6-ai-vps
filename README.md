@@ -141,6 +141,42 @@ server {
 }
 ```
 
+### 5. 拥塞控制：启用 BBR（必做）
+
+默认的 `cubic` 在丢包链路上会把窗口砍到 2 个报文，吞吐随之塌到几十 KB/s。同一台 VPS、同一条链路实测：
+
+| 指标 | cubic（默认） | BBR |
+|---|---|---|
+| 单连接吞吐 | 20–46 KB/s | **205–262 KB/s** |
+| `cwnd` | 2 MSS | 21–24 MSS |
+| 重传占比 | 34% | 接近 0 |
+| ChatGPT 首页 663 KB | 20–30 秒 | **2.5 秒** |
+
+服务端三条命令，不需要重启 sing-box：
+
+```bash
+modprobe tcp_bbr
+sysctl -w net.core.default_qdisc=fq
+sysctl -w net.ipv4.tcp_congestion_control=bbr
+```
+
+持久化，重启后仍然生效：
+
+```bash
+printf 'net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr\n' > /etc/sysctl.d/99-bbr.conf
+echo tcp_bbr > /etc/modules-load.d/bbr.conf
+```
+
+确认是否生效：
+
+```bash
+sysctl -n net.ipv4.tcp_congestion_control        # bbr
+ss -tin state established "( sport = :8444 )" | grep -oE 'cwnd:[0-9]+'
+# 新建的连接应看到两位数 cwnd；仍是 cwnd:2 说明没生效（旧连接不会切换算法）
+```
+
+> 只影响新建连接。改完要开一个新页面或重连一次才走新算法。
+
 ---
 
 ## 客户端规则
@@ -157,7 +193,7 @@ dns:
     "geosite:cn": ["https://doh.pub/dns-query"]
 ```
 
-`rules` 段顺序不能乱（2026-11-06 起 82 条）：
+`rules` 段顺序不能乱（2026-11-08 起 84 条）：
 
 1. 私网 / 本机 CIDR → `DIRECT`
 2. **进程级兜底**：`PROCESS-NAME,claude` + `PROCESS-PATH-REGEX,.*/claude/versions/.*`
@@ -166,6 +202,9 @@ dns:
    只写 `PROCESS-NAME` 匹配不到；路径规则才是 CLI 的可靠兜底。
 3. `AND,((NETWORK,UDP),(DOMAIN-SUFFIX,...))` / `(DOMAIN-KEYWORD,...)` → `REJECT`（QUIC 拒绝）
 4. AI 域名（后缀 + 关键字）→ `RESI`（Claude / OpenAI / Google / 遥测 / 客服 widget）
+   关键字兜底 `claude` / `anthropic` / `openai` 负责清单外的新域名；`vsassets.io` 先钉回机房，
+   因为 VS Code 市场里带厂商名的静态资源不是 AI 流量。Cloudflare 验证组件单独处理：
+   `auth.exa.ai` 与 `challenges.cloudflare.com` 走住宅，否则 Turnstile 会把机房 IP 判成可疑。
 5. Anthropic 自有网段与 ASN → `RESI`
 6. `GEOIP,CN → DIRECT`
 7. `MATCH → Proxy`（机房）
@@ -276,6 +315,8 @@ curl -s https://openai.com/cdn-cgi/trace | grep -E '^ip='
 systemctl is-active sing-box aether-flowd aether-ai-guard
 sing-box check -c /etc/sing-box/config.json
 nft list table inet ai_guard | grep counter   # packets/bytes 应长期为 0
+ss -tin state established "( sport = :8444 )" | grep -oE 'cwnd:[0-9]+|bytes_retrans:[0-9]+'
+# 期望：cwnd 两位数、bytes_retrans 很小；出现 cwnd:2 说明 BBR 没生效或链路在丢包
 python3 - <<'SQL'
 import sqlite3, time
 c = sqlite3.connect("/var/lib/aether-usage/flows.db")
@@ -309,6 +350,9 @@ SQL
 | 某台设备 Claude/ChatGPT 突然连不上（服务端 reject） | 该设备用的是旧 profile 或纯节点订阅，把 AI 域名送到了 443 机房入口；服务端 2026-11-06 起 fail-closed | 用 `flows.db` 的 `src` 定位设备，换成带规则的客户端配置；这是「不泄漏就断」的预期行为 |
 | 某些站点解析到国内 CDN，被判直连 | 用国内 DoH 解析国外域名 | 国外域名走 `#Proxy` 的 DoH，国内用 `geosite:cn` 策略 |
 | 页面加载一半失败 | QUIC 走 UDP 绕过规则 | 对 AI 域名 `REJECT` UDP，让浏览器回落 TCP |
+| 页面能开但很慢，大图/视频出不来 | 服务端 `cwnd` 掉到 2、重传三成以上，不是带宽不够 | 开 BBR，见「拥塞控制」；用 `ss -tin` 看 `cwnd` 与 `bytes_retrans` 确认 |
+| Claude 发消息一直加载，最后报 `ECONNRESET` | 会话上下文太大，单个请求体积大，链路抖一下就整条断 | 开新会话（交接钩子会在 380k 提醒）；请求越小越抗抖 |
+| 日志出现 `REALITY: processed invalid connection` | 客户端配置与服务端对不上（`short_id` / SNI），或公网探测 | 核对两端 `short_id` 与 SNI；不一致就重新导入客户端配置 |
 | 客户端偶尔直连 | 客户端开了 IPv6 | 关掉客户端 IPv6，`ipv6: false` |
 | 家宽 IPv6 目标连不上 | 目标只有 A 记录，且不在例外清单 | 预期：失败关闭，不会回落 IPv4；确需使用就加进例外（走机房 v4） |
 | 例外域名走了住宅 | 例外规则排在 `resolve` 之后 | 例外必须放在 `route.rules` 最前面 |

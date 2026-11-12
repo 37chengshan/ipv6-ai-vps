@@ -216,6 +216,11 @@ rules:
 - DOMAIN-SUFFIX,googleapis.com,k-vps-resi
 - DOMAIN-SUFFIX,gstatic.com,k-vps-resi
 - DOMAIN-SUFFIX,googleusercontent.com,k-vps-resi
+# Antigravity（Google 的 agent IDE）：Hub 的 language_server 与 CLI 共用
+# cloudcode-pa / aicode / aiplatform（都在 googleapis 下，已覆盖）；
+# 未覆盖的是 antigravity-unleash.goog（feature flag）与 antigravity.google。
+- DOMAIN-SUFFIX,antigravity-unleash.goog,k-vps-resi
+- DOMAIN-SUFFIX,antigravity.google,k-vps-resi
 - DOMAIN-SUFFIX,gmail.com,k-vps-resi
 - DOMAIN-SUFFIX,google-analytics.com,k-vps
 - DOMAIN-SUFFIX,googletagmanager.com,k-vps

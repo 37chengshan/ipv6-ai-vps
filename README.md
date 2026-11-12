@@ -141,6 +141,19 @@ server {
 }
 ```
 
+> **改了模板必须同步上传。** 客户端按 24h 自动更新这个 URL；只改仓库里的
+> `configs/client/clash.example.yaml` 而不重新生成、覆盖服务器上的那份，下一次更新会把
+> 本地规则覆盖回旧版（2026-11-11 实测：84 条 → 71 条，进程兜底 / 关键字兜底 / exa /
+> Cloudflare 规则全部消失，且 Guard 不会报错）。发布三步：
+>
+> ```bash
+> python3 scripts/gen-subscriptions.py ... --outdir ./out     # 1. 重新生成
+> scp out/clash.yaml root@HOST:/srv/sub/<token>/k-vps.yaml    # 2. 覆盖（先备份）
+> # 3. 客户端手动「更新订阅」，或等自动更新
+> ```
+>
+> 核对：`curl -s http://HOST:20086/<token>/k-vps.yaml | grep -c PROCESS-PATH-REGEX` 应为 1。
+
 ### 5. 拥塞控制：启用 BBR（必做）
 
 默认的 `cubic` 在丢包链路上会把窗口砍到 2 个报文，吞吐随之塌到几十 KB/s。同一台 VPS、同一条链路实测：

@@ -137,6 +137,13 @@ rules:
 - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
 - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
 - IP-CIDR,203.0.113.10/32,DIRECT,no-resolve
+# ★ agy / Antigravity 走机房 IPv4（2026-11-12）：住宅链是 IPv6-only，
+#   实测 3.8 Flash 在住宅出口 2–5 分钟才回一句甚至只 503；机房出口 35 秒正常。
+#   只钉这两个进程，其它服务的分流不受影响。
+- AND,((PROCESS-PATH-REGEX,.*/\.local/bin/agy),(NETWORK,UDP)),REJECT
+- PROCESS-PATH-REGEX,.*/\.local/bin/agy,k-vps
+- AND,((PROCESS-PATH-REGEX,.*/Antigravity\.app/.*),(NETWORK,UDP)),REJECT
+- PROCESS-PATH-REGEX,.*/Antigravity\.app/.*,k-vps
 - AND,((PROCESS-NAME,claude),(NETWORK,UDP)),REJECT
 - PROCESS-NAME,claude,k-vps-resi
 # ★ 进程级兜底（2026-11-06）：~/.local/bin/claude 是 symlink，指向
@@ -213,14 +220,15 @@ rules:
 - DOMAIN-SUFFIX,sora.com,k-vps-resi
 - DOMAIN-SUFFIX,google.com,k-vps-resi
 - DOMAIN-SUFFIX,google.com.hk,k-vps-resi
+- DOMAIN-SUFFIX,cloudcode-pa.googleapis.com,k-vps
+- DOMAIN-SUFFIX,daily-cloudcode-pa.googleapis.com,k-vps
 - DOMAIN-SUFFIX,googleapis.com,k-vps-resi
 - DOMAIN-SUFFIX,gstatic.com,k-vps-resi
 - DOMAIN-SUFFIX,googleusercontent.com,k-vps-resi
-# Antigravity（Google 的 agent IDE）：Hub 的 language_server 与 CLI 共用
-# cloudcode-pa / aicode / aiplatform（都在 googleapis 下，已覆盖）；
-# 未覆盖的是 antigravity-unleash.goog（feature flag）与 antigravity.google。
-# 注意：这两个主机在服务端解析不到 AAAA，reso 链路（ipv6_only）会 empty result，
-# 所以不能钉住宅，交给 MATCH→Proxy（机房）。AI 推理走 googleapis，已在上面钉住宅。
+# Antigravity（Google 的 agent IDE）：language_server 与 CLI 共用 cloudcode-pa。
+# 2026-11-12 实测：住宅链（IPv6-only 家宽）上 3.8 Flash 频繁 503 / 长流卡死；
+# 机房出口 35 秒正常完成，所以 cloudcode-pa 两个主机钉机房（上面两条），
+# 其余 googleapis 仍走住宅。antigravity.google / *.goog 无 AAAA，不能钉住宅。
 - DOMAIN-SUFFIX,gmail.com,k-vps-resi
 - DOMAIN-SUFFIX,google-analytics.com,k-vps
 - DOMAIN-SUFFIX,googletagmanager.com,k-vps
